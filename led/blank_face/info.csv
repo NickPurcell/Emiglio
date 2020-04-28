@@ -1,0 +1,10 @@
+r2,blank_low,
+.1,blank_blink_low,
+0,5
+1,blank_low,
+0,0
+r2,blank_high,
+.1,blank_blink_high,
+0,5,
+1,blank_high
+0,0
