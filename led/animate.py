@@ -98,7 +98,19 @@ def animate(ani_name):
         time.sleep(max(t_hold - (time.time() - t_last), 0))
         t_last = time.time()
         
+
 def ani_timer(fps, timer_lock, stop_lock):
+	"""
+	Use timer to refresh the screen at ((fps))
+	
+	Args
+	fps : float
+	Frames per second desired
+	Timer_Lock : threading.Event
+	Event to hold the timer until new frame is being drawn
+	stop_lock : threading.Event
+	Stop drawing new frames if the program has been stopped
+	"""
     start_timer = threading.Timer(1/fps,draw,args=(timer_lock,))
     start_timer.start()
     while True:
@@ -108,8 +120,16 @@ def ani_timer(fps, timer_lock, stop_lock):
         timer = threading.Timer(1/fps,draw,args=(timer_lock,))
         timer.start()
     
+	
 def draw(timer_lock):
-    global pix_val
+    """
+	Set colors on board based on pix_val and effects
+	
+	Args
+	timer_lock : threading.Event
+	Event to hold the timer until new frame is being drawn
+	"""
+	global pix_val
     timer_lock.set()
     r_2_l = True
     for i in range(16):
@@ -129,7 +149,10 @@ def draw(timer_lock):
     strip.show()
     
 def sparkle_control():
-    global sparkle
+    """
+    Manage Sparkle Effect
+    """
+	global sparkle
     while True:
         s_time = time.time()
         sparkle = sparkle + spark_add
