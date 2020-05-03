@@ -13,6 +13,7 @@ import threading
 from random import seed
 from random import random
 
+# Use start time as random seed
 seed(time.time())
  
 # LED strip configuration:
@@ -20,15 +21,16 @@ LED_COUNT      = 256      # Number of LED pixels.
 LED_PIN        = 18      # GPIO pin connected to the pixels (18 uses PWM!).
 LED_FREQ_HZ    = 800000  # LED signal frequency in hertz (usually 800khz)
 LED_DMA        = 10      # DMA channel to use for generating signal (try 10)
-LED_BRIGHTNESS = 25       # Set to 0 for darkest and 255 for brightest
+LED_BRIGHTNESS = 25       # Set to 0 for darkest and 255 for brightest - THIS SHOULD BE LOW <50
 LED_INVERT     = False   # True to invert the signal (when using NPN transistor level shift)
 LED_CHANNEL    = 0       # set to '1' for GPIOs 13, 19, 41, 45 or 53
  
 # Make every LED sparkle 
 sparkle = np.random.permutation(np.arange(-2*pi/.2, 2*pi/.2, 4*pi/(.2*256)))
 spark_add = np.random.permutation(np.arange(pi/14, pi/24, (pi/24-pi/14)/256))
-
-pix_val = np.zeros([256,3])
+ 
+pix_for = np.zeros([256,3])
+pix_bak = np.zeros([256,3])
 
  # Define functions which animate LEDs in various ways.
 def colorWipe(strip, color, wait_ms=50):
@@ -58,7 +60,7 @@ def animate(ani_name):
     ani_name : String
     Name of animation folder
     """
-    global pix_val
+    global pix_for
     t_last = time.time()
     timing = []
     with open(ani_name + '/info.csv', newline='') as f:
@@ -78,7 +80,7 @@ def animate(ani_name):
                 for p in data_cache:
                     im = Image.open(ani_name + '/' + p[1] + '.png').convert("RGB")
                     im_data = im.getdata()
-                    pix_val = np.array(im_data)
+                    pix_for = np.array(im_data)
                     if p[0][0] == 'r':
                         t_hold = random()*float(p[0][1:])
                     else:
@@ -90,7 +92,7 @@ def animate(ani_name):
         im = Image.open(ani_name + '/' + dat[1] + '.png').convert("RGB")
         im_data = im.getdata()
         data_cache = data_cache + (dat, )
-        pix_val = np.array(im_data)
+        pix_for = np.array(im_data)
         if dat[0][0] == 'r':
             t_hold = random()*float(dat[0][1:])
         else:
@@ -99,29 +101,29 @@ def animate(ani_name):
         t_last = time.time()
         
 
-def ani_timer(fps, timer_lock, stop_lock):
-	"""
-	Use timer to refresh the screen at ((fps))
-	
-	Args
-	fps : float
-	Frames per second desired
-	Timer_Lock : threading.Event
-	Event to hold the timer until new frame is being drawn
-	stop_lock : threading.Event
-	Stop drawing new frames if the program has been stopped
-	"""
-    start_timer = threading.Timer(1/fps,draw,args=(timer_lock,))
+def ani_timer(fps, timer_lock, stop_lock, for_black = False):
+    """
+    Use timer to refresh the screen at ((fps))
+
+    Args
+    fps : float
+    Frames per second desired
+    Timer_Lock : threading.Event
+    Event to hold the timer until new frame is being drawn
+    stop_lock : threading.Event
+    Stop drawing new frames if the program has been stopped
+    """
+    start_timer = threading.Timer(1/fps,draw,args=(timer_lock, for_black))
     start_timer.start()
     while True:
         event_in_wating = timer_lock.wait()
         event_in_wating = stop_lock.wait()
         timer_lock.clear()
-        timer = threading.Timer(1/fps,draw,args=(timer_lock,))
+        timer = threading.Timer(1/fps,draw,args=(timer_lock, for_black))
         timer.start()
     
 	
-def draw(timer_lock):
+def draw(timer_lock, for_black):
     """
 	Set colors on board based on pix_val and effects
 	
@@ -129,30 +131,115 @@ def draw(timer_lock):
 	timer_lock : threading.Event
 	Event to hold the timer until new frame is being drawn
 	"""
-	global pix_val
+    global pix_for, pix_bak
+    # Begin the timer for a new frame when each frame begins
     timer_lock.set()
+    # Toggle right to left and left to right to match LED strip
     r_2_l = True
+    # Iterate through each pixel
     for i in range(16):
         for j in range(16):
-            if not r_2_l:
-                if any(pix_val[i*16 + j]):
-                    spark = 1/(2*pi) + 1/pi*(1+cos(.2*sparkle[i+j])+cos(.2*2*sparkle[i+j])+cos(.2*3*sparkle[i+j])+cos(.2*4*sparkle[i+j])+cos(.2*5*sparkle[i+j]))
-                    spark_mult = 20
-                    color_out = Color(int(max(min(pix_val[i*16 + j][1] + spark_mult*spark, 255), 0)),
-                    int(max(min(pix_val[i*16 + j][0] + spark_mult*spark, 255), 0)), int(max(min(pix_val[i*16 + j][2] + spark_mult*spark, 255), 0)))
-                else:
-                    color_out = Color(0,0,0)
-                strip.setPixelColor(i*16 + j, color_out)
+            # Toggle draw direction
+            if r_2_l:
+                index = (i+1)*16 - 1 - j
             else:
-                strip.setPixelColor((i+1)*16 - 1 - j, Color(int(pix_val[i*16 + j][1]), int(pix_val[i*16 + j][0]), int(pix_val[i*16 + j][2])))
+                index = i*16 + j-5
+            # Calculate sparkle based on first few terms of Delta fourier expansion
+            spark = 1/(2*pi) + 1/pi*(1+cos(.2*sparkle[index])+cos(.2*2*sparkle[index])+
+                                       cos(.2*3*sparkle[index])+cos(.2*4*sparkle[index])+
+                                       cos(.2*5*sparkle[index]))
+            spark_mult = 20
+            # Draw foreground over background
+            if not for_black:
+                r, g, b = pix_for[index]
+                if not any((r, g, b)):
+                    r, g, b = pix_bak[index]
+            # Draw background and make foreground black
+            else:
+                r, g, b = pix_bak[index]
+                if any(pix_for[index]):
+                    r, g, b = (0, 0, 0)
+            if any((r, g, b)):
+                r += spark_mult*spark
+                g += spark_mult*spark
+                b += spark_mult*spark
+            color_out = Color(int(max(min(g, 255), 0)),
+                              int(max(min(r, 255), 0)),
+                              int(max(min(b, 255), 0)))
+            strip.setPixelColor(index, color_out)
         r_2_l = not r_2_l
     strip.show()
     
+def fire(wait_ms=30):
+    """
+    Background animation - Fire
+    
+    Pixels generated at bottom row with variable brightness
+    Move pixel row up one row of LEDs each update frame
+    Decrease pixel brightness by random amount each update
+    Increase pixel brightness based on brightness of nearby pixels
+    
+    Args
+    Output : Numpy.Array
+    Array to update
+    """
+    global pix_bak
+    # Set max and min decay amounts, higher -> higher flame
+    max_decay = 1/8
+    min_decay = 1/17
+    # Initialize fire array, set bottom to zero to create a bit of an "explosion"
+    fire = np.zeros((16,16))
+    fire = np.ones((16,16))*np.array(((1,),(1,),(1,),(1,),
+                                      (0,),(0,),(0,),(0,),
+                                      (0,),(0,),(0,),(0,),
+                                      (0,),(0,),(0,),(0,)))
+    # Multiplier to to set amount by which pixel is effected by other pixels                                  
+    mul = 100
+    while True:
+        # Move pixels up the screen by rolling the array
+        fire = np.roll(fire, 1, axis=0)
+        # Set bottom row
+        fire[0] = np.random.rand((16))*.2+.7
+        # Iterate through each pixel to change output array
+        for i in range(0,16):
+            for j in range(0,16):
+                # Increase the brightness of each pixel based on brightness of surrounding pixels
+                if i != 0:
+                    fire[i,j] -= ((max_decay - min_decay)*np.random.rand(1)+min_decay)
+                    fire[i,j] += sum(fire[i-1,max(0,j-1):min(16,j+2)])/mul
+                    if i != 15:
+                        fire[i,j] += sum(fire[i+1,max(0,j-1):min(16,j+2)])/mul
+                    if j != 0:
+                        fire[i,j] += sum(fire[max(0,i-1):min(16,i+2),j-1])/mul
+                    fire[i,j] = min(1, fire[i,j])
+                # Decrease color vals based on brightness, change color order for diff. colored flames
+                # r - g - b = Natural
+                # b - r - g = Cool purple
+                if 1 >= fire[i][j] > 2/3:
+                    r = 200
+                    g = 200
+                    b = min(200, max(0, (fire[i][j] - 2/3)* 200 * 3))
+                elif 2/3 >= fire[i,j] > 1/3:
+                    r = 200
+                    g = min(200, max(0, (fire[i][j] - 1/3)* 200 * 3))
+                    b = 0
+                elif 1/3 >= fire[i][j] > 0:
+                    r = min(200, max(0, (fire[i][j])* 200 * 3))
+                    g = 0
+                    b = 0
+                else:
+                    r = 0
+                    g = 0
+                    b = 0
+                pix_bak[(15-i)*16+j] = int(r),int(g),int(b)
+        time.sleep(wait_ms/1000)
+        
+
 def sparkle_control():
     """
     Manage Sparkle Effect
     """
-	global sparkle
+    global sparkle
     while True:
         s_time = time.time()
         sparkle = sparkle + spark_add
@@ -177,14 +264,18 @@ if __name__ == '__main__':
     stop_lock = threading.Event()
     stop_lock.set()
     
-    draw_thread = threading.Thread(name='ani_timer', target=ani_timer, args=(16, timer_lock, stop_lock))
+    draw_thread = threading.Thread(name='ani_timer', target=ani_timer, 
+                                   args=(16,  timer_lock, stop_lock, False))
+    fire_thread = threading.Thread(name='fire', target=fire)
     sparkle_thread = threading.Thread(name='sparkle_control', target=sparkle_control)
 
     draw_thread.setDaemon(True)
     sparkle_thread.setDaemon(True)
+    fire_thread.setDaemon(True)
     
     draw_thread.start()
     sparkle_thread.start()
+    #fire_thread.start()
     
     try:
  
@@ -197,6 +288,7 @@ if __name__ == '__main__':
                 animate('blank_face')
             #for i in range(0,10):
             #    animate('mad', 32)
+ 
  
     except KeyboardInterrupt:
         stop_lock.clear()
