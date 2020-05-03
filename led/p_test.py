@@ -9,6 +9,7 @@ import time
 from neopixel import *
 import argparse
 import numpy as np
+from math import pi, cos
  
 # LED strip configuration:
 LED_COUNT      = 256      # Number of LED pixels.
@@ -20,6 +21,10 @@ LED_BRIGHTNESS = 25     # Set to 0 for darkest and 255 for brightest
 LED_INVERT     = False   # True to invert the signal (when using NPN transistor level shift)
 LED_CHANNEL    = 0       # set to '1' for GPIOs 13, 19, 41, 45 or 53
  
+ 
+ # Make every LED sparkle 
+sparkle = np.random.permutation(np.arange(-2*pi/.2, 2*pi/.2, 4*pi/(.2*256)))
+spark_add = np.random.permutation(np.arange(pi/14, pi/24, (pi/24-pi/14)/256))
  
  
 # Define functions which animate LEDs in various ways.
@@ -79,20 +84,83 @@ def theaterChaseRainbow(strip, wait_ms=50):
             for i in range(0, strip.numPixels(), 3):
                 strip.setPixelColor(i+q, 0)
  
-def fire(strip, wait_ms=20):
-    max_decay = 100/4
-    min_decay = 100/16
-    fire = np.zeros((16,16,2))
+def fire(strip, wait_ms=30):
+    global sparkle, spark_add
+    max_decay = 1/7
+    min_decay = 1/16
+    fire = np.zeros((16,16))
+    fire = np.ones((16,16))*np.array(((1,),(1,),(1,),(1,),
+                                      (0,),(0,),(0,),(0,),
+                                      (0,),(0,),(0,),(0,),
+                                      (0,),(0,),(0,),(0,)))
+    mul = 100
+    c_time = time.time()
     while True:
         fire = np.roll(fire, 1, axis=0)
-        fire[0] = np.column_stack((np.ones((16,1)),((max_decay - min_decay)*np.random.rand(16,1)+min_decay)))
+        fire[0] = np.random.rand((16))*.2+.7
+        r_2_l = True
+        sparkle = sparkle + spark_add
         for i in range(0,16):
             for j in range(0,16):
                 if i != 0:
-                    fire[i][j][0] -= fire[i][j][1]
-                print("AH!")
-                print(fire)
-                strip.setPixelColor(i+j,Color(min(255, max(0, 255-(fire[15-i][j][0]-50)*255/50)), 255, min(255, max(0, 255-fire[15-i][j][0]*255/50))))
+                    fire[i,j] -= ((max_decay - min_decay)*np.random.rand(1)+min_decay)
+                    #if fire[i][j] != 0:
+                    fire[i,j] += sum(fire[i-1,max(0,j-1):min(16,j+2)])/mul
+                    if i != 15:# and fire[i][j] != 0:
+                        fire[i,j] += sum(fire[i+1,max(0,j-1):min(16,j+2)])/mul
+                    if j != 0:# and fire[i][j] != 0:
+                        fire[i,j] += sum(fire[max(0,i-1):min(16,i+2),j-1])/mul
+                    fire[i,j] = min(1, fire[i,j])
+                if 1 >= fire[i][j] > 2/3:
+                    r = 200
+                    g = 200
+                    b = min(200, max(0, (fire[i][j] - 2/3)* 200 * 3))
+                elif 2/3 >= fire[i,j] > 1/3:
+                    r = 200
+                    g = min(200, max(0, (fire[i][j] - 1/3)* 200 * 3))
+                    b = 0
+                elif 1/3 >= fire[i][j] > 0:
+                    r = min(200, max(0, (fire[i][j])* 200 * 3))
+                    g = 0
+                    b = 0
+                else:
+                    r = 0
+                    g = 0
+                    b = 0
+                if 6 > time.time() - c_time > 3:
+                    old = {'r' : r,'g' : g,'b' : b}
+                    r = old['g']
+                    g = old['b']
+                    b = old['r']
+                elif 9 > time.time() - c_time > 6:
+                    old = {'r' : r,'g' : g,'b' : b}
+                    r = old['b']
+                    g = old['r']
+                    b = old['g']
+                elif 12 > time.time() - c_time > 9:
+                    old = {'r' : r,'g' : g,'b' : b}
+                    r = old['b']
+                    g = old['g']
+                    b = old['r']
+                elif time.time() - c_time > 12:
+                    c_time = time.time()
+                if r_2_l:
+                    if not r == 0:
+                        r += max(0,50*r/200*cos(sparkle[(15-i)*16+j]))
+                    if not g == 0:
+                        g += max(0,50*g/200*cos(sparkle[(15-i)*16+j]))
+                    if not b == 0:
+                        b += max(0,50*b/200*cos(sparkle[(15-i)*16+j]))
+                    strip.setPixelColor((15-i)*16+j,Color(int(g),int(r),int(b)))
+                else:
+                    if not r == 0:
+                        r += max(0,50*r/200*cos(sparkle[(15-i-1)*16-j]))
+                    if not g == 0:
+                        g += max(0,50*g/200*cos(sparkle[(15-i-1)*16-j]))
+                    if not b == 0:
+                        b += max(0,50*b/200*cos(sparkle[(15-i-1)*16-j]))
+                    strip.setPixelColor((15-i+1)*16-j-1,Color(int(g),int(r),int(b)))
+            r_2_l = not r_2_l
         strip.show()
         time.sleep(wait_ms/1000)
         
@@ -105,7 +173,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--clear', action='store_true', help='clear the display on exit')
     args = parser.parse_args()
- 
+
     # Create NeoPixel object with appropriate configuration.
     strip = Adafruit_NeoPixel(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL)
     # Intialize the library (must be called once before other functions).
@@ -129,5 +197,4 @@ if __name__ == '__main__':
             fire(strip)
  
     except KeyboardInterrupt:
-        if args.clear:
-            colorWipe(strip, Color(0,0,0), 10)
+        colorWipe(strip, Color(0,0,0), 0)
