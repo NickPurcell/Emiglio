@@ -1,0 +1,3 @@
+Variable Power Supply
+
+Turn Up to ~5.2V, that's safe for the Pi and will negate voltage drop along wires

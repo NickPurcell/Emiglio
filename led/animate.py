@@ -12,9 +12,13 @@ from math import pi, cos
 import threading
 from random import seed
 from random import random
+from pygame import mixer
 
 # Use start time as random seed
 seed(time.time())
+
+# Initialize pygame mixer
+#mixer.init()
  
 # LED strip configuration:
 LED_COUNT      = 256      # Number of LED pixels.
@@ -28,6 +32,7 @@ LED_CHANNEL    = 0       # set to '1' for GPIOs 13, 19, 41, 45 or 53
 # Make every LED sparkle 
 sparkle = np.random.permutation(np.arange(-2*pi/.2, 2*pi/.2, 4*pi/(.2*256)))
 spark_add = np.random.permutation(np.arange(pi/14, pi/24, (pi/24-pi/14)/256))
+ 
  
 pix_for = np.zeros([256,3])
 pix_bak = np.zeros([256,3])
@@ -101,6 +106,52 @@ def animate(ani_name):
         t_last = time.time()
         
 
+def playlist(play_name):
+    """ 
+    Go through each sound in playlist folder and play
+    
+    Arguements
+    play_name : String
+    Name of playlist folder
+    """
+    global pix_for
+    t_last = time.time()
+    timing = []
+    with open(play_name + '/info.csv', newline='') as f:
+        reader = csv.reader(f)
+        data = list(reader)
+    data_cache = ()
+    for dat in data:
+        if dat == ['0','0']:
+            data_cache = ()
+            continue
+        elif dat[0] == '0':
+            if dat[1][0] == 'r':
+                reps = int(random()*float(dat[1][1:]))
+            else:
+                reps = int(dat[1])-1
+            for i in range(reps):
+                for p in data_cache:
+                    sound = mixer.Sound(play_name + '/' + p[1] + '.wav')
+                    sound.play()
+                    if p[0][0] == 'r':
+                        t_hold = random()*float(p[0][1:])
+                    else:
+                        t_hold = float(p[0])
+                    time.sleep(max(t_hold - (time.time() - t_last), 0))
+                    t_last = time.time()
+            data_cache = ()
+            continue
+        sound = mixer.Sound(play_name + '/' + dat[1] + '.wav')
+        sound.play()
+        if dat[0][0] == 'r':
+            t_hold = random()*float(dat[0][1:])
+        else:
+            t_hold = float(dat[0])
+        time.sleep(max(t_hold - (time.time() - t_last), 0))
+        t_last = time.time()
+        
+
 def ani_timer(fps, timer_lock, stop_lock, for_black = False):
     """
     Use timer to refresh the screen at ((fps))
@@ -137,13 +188,15 @@ def draw(timer_lock, for_black):
     # Toggle right to left and left to right to match LED strip
     r_2_l = True
     # Iterate through each pixel
-    for i in range(16):
-        for j in range(16):
+    for i in range(0,16):
+        for j in range(0,16):
+            if i == j == 0:
+                r_2_l == True
             # Toggle draw direction
             if r_2_l:
                 index = (i+1)*16 - 1 - j
             else:
-                index = i*16 + j-5
+                index = i*16 + j
             # Calculate sparkle based on first few terms of Delta fourier expansion
             spark = 1/(2*pi) + 1/pi*(1+cos(.2*sparkle[index])+cos(.2*2*sparkle[index])+
                                        cos(.2*3*sparkle[index])+cos(.2*4*sparkle[index])+
@@ -166,7 +219,7 @@ def draw(timer_lock, for_black):
             color_out = Color(int(max(min(g, 255), 0)),
                               int(max(min(r, 255), 0)),
                               int(max(min(b, 255), 0)))
-            strip.setPixelColor(index, color_out)
+            strip.setPixelColor(i*16 + j, color_out)
         r_2_l = not r_2_l
     strip.show()
     
@@ -233,7 +286,39 @@ def fire(wait_ms=30):
                     b = 0
                 pix_bak[(15-i)*16+j] = int(r),int(g),int(b)
         time.sleep(wait_ms/1000)
-        
+
+
+def wiper(delay=.1):
+    global pix_bak
+    for i in range(256):
+        pix_bak[i] = (255,0,0)
+    colors = ((255,0,0),
+              (255,75,0),
+              (255,255,0),
+              (0,255,0),
+              (0,100,255),
+              (50,0,255),
+              (255,0,255))
+    current = (255,0,0)
+    while True:
+        for i in range(7):
+            next = (i != 6) * (i+1)
+            color_tran = np.subtract(colors[next], colors[i])/5
+            current = colors[i]
+            for j in range(5):
+                
+                current = np.add(current, color_tran)
+                pix_bak = np.roll(pix_bak, 16, axis = 0)
+                pix_bak[0:16] = current*np.ones((16,3))
+                time.sleep(delay)
+            current = colors[next]
+            for j in range(6):
+                pix_bak = np.roll(pix_bak, 16, axis = 0)
+                pix_bak[0:16] = current*np.ones((16,3))
+                time.sleep(delay)
+                
+            
+
 
 def sparkle_control():
     """
@@ -265,8 +350,8 @@ if __name__ == '__main__':
     stop_lock.set()
     
     draw_thread = threading.Thread(name='ani_timer', target=ani_timer, 
-                                   args=(16,  timer_lock, stop_lock, False))
-    fire_thread = threading.Thread(name='fire', target=fire)
+                                   args=(16,  timer_lock, stop_lock, True))
+    fire_thread = threading.Thread(name='wiper', target=wiper)
     sparkle_thread = threading.Thread(name='sparkle_control', target=sparkle_control)
 
     draw_thread.setDaemon(True)
@@ -275,10 +360,9 @@ if __name__ == '__main__':
     
     draw_thread.start()
     sparkle_thread.start()
-    #fire_thread.start()
+    fire_thread.start()
     
     try:
- 
         while True:
             print("Talking")
             for i in range(0,3):

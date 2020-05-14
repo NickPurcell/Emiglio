@@ -1,0 +1,26 @@
+LEDs
+
+sudo apt-get install gcc make build-essential python-dev git scons swig
+
+disable audio
+
+add to file:
+sudo nano /etc/modprobe.d/snd-blacklist.conf
+ADD THIS -> blacklist snd_bcm2835
+
+Comment out of file:
+sudo nano /boot/config.txt
+# Enable audio (loads snd_bcm2835)
+COMMENT OUT THIS -> dtparam=audio=on
+
+Reboot
+
+git clone https://github.com/jgarff/rpi_ws281x
+
+cd rpi_ws281x/
+sudo scons
+
+cd python
+
+sudo python3 setup.py build
+sudo python3 setup.py install
