@@ -29,7 +29,8 @@ class Motor:
         if -1 <= speed <= 1:
             self.speed = speed
             self.dir = (speed >= 0) #^ self.flip
-            GPIO.output(self.dir_pin, self.dir)
+            gpio_dict = {True : GPIO.HIGH, False: GPIO.LOW}
+            GPIO.output(self.dir_pin, gpio_dict[self.dir])
             pca.channels[self.pwm_channel].duty_cycle = int(abs(speed)*0xffff)
             sleep(.1)
         else:
@@ -39,17 +40,18 @@ class Motor:
     def change_dir(self, dir):
         self.dir = dir > 0
         GPIO.output(self.dir_pin, self.dir)
+        speed = -speed
         
     def change_dir_pin(self, dir_pin):
         self.dir_pin = dir_pin
         GPIO.setup(dir_pin, GPIO.OUT, initial=self.dir)
+        GPIO.output(self.dir_pin, self.dir)
         
     def stop(self):
         pca.channels[self.pwm_channel].duty_cycle = 0
-        sleep(.1)
-        
-        
-        
+        speed = 0
+        sleep(.1)  
+
 def main():
     motor_1 = Motor(29,15)
     motor_2 = Motor(31,14)

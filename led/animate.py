@@ -316,6 +316,15 @@ def wiper(delay=.1):
                 pix_bak = np.roll(pix_bak, 16, axis = 0)
                 pix_bak[0:16] = current*np.ones((16,3))
                 time.sleep(delay)
+
+def stop():
+    global stop_lock, timer_lock
+    stop_lock.clear()
+    timer_lock.clear()
+    colorWipe(strip, Color(0,0,0), 0)
+    for i in range(strip.numPixels()):
+        strip.setPixelColor(i, Color(0,0,0))
+    strip.show()
                 
             
 
@@ -330,50 +339,32 @@ def sparkle_control():
         sparkle = sparkle + spark_add
         time.sleep(max(1/16 - (time.time() - s_time), 0))
     
- 
-# Main program logic follows:
-if __name__ == '__main__':
-    # Process arguments
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--clear', action='store_true', help='clear the display on exit')
-    args = parser.parse_args()
- 
-    # Create NeoPixel object with appropriate configuration.
-    strip = Adafruit_NeoPixel(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL)
-    # Intialize the library (must be called once before other functions).
-    strip.begin()
- 
-    timer_lock = threading.Event()
-    timer_lock.clear()
-    
-    stop_lock = threading.Event()
-    stop_lock.set()
-    
-    draw_thread = threading.Thread(name='ani_timer', target=ani_timer, 
-                                   args=(16,  timer_lock, stop_lock, True))
-    fire_thread = threading.Thread(name='wiper', target=wiper)
-    sparkle_thread = threading.Thread(name='sparkle_control', target=sparkle_control)
+# Start Neopixel
+# Process arguments
+parser = argparse.ArgumentParser()
+parser.add_argument('-c', '--clear', action='store_true', help='clear the display on exit')
+args = parser.parse_args()
 
-    draw_thread.setDaemon(True)
-    sparkle_thread.setDaemon(True)
-    fire_thread.setDaemon(True)
-    
-    draw_thread.start()
-    sparkle_thread.start()
-    fire_thread.start()
-    
-    try:
-        while True:
-            print("Talking")
-            for i in range(0,3):
-                animate('blank_talk')
-            print("Blank")
-            for i in range(0,1):
-                animate('blank_face')
-            #for i in range(0,10):
-            #    animate('mad', 32)
- 
- 
-    except KeyboardInterrupt:
-        stop_lock.clear()
-        colorWipe(strip, Color(0,0,0), 0)
+# Create NeoPixel object with appropriate configuration.
+strip = Adafruit_NeoPixel(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL)
+# Intialize the library (must be called once before other functions).
+strip.begin()
+
+timer_lock = threading.Event()
+timer_lock.clear()
+
+stop_lock = threading.Event()
+stop_lock.set()
+
+draw_thread = threading.Thread(name='ani_timer', target=ani_timer, 
+                               args=(16,  timer_lock, stop_lock, True))
+fire_thread = threading.Thread(name='wiper', target=wiper)
+sparkle_thread = threading.Thread(name='sparkle_control', target=sparkle_control)
+
+draw_thread.setDaemon(True)
+sparkle_thread.setDaemon(True)
+fire_thread.setDaemon(True)
+
+draw_thread.start()
+sparkle_thread.start()
+fire_thread.start()

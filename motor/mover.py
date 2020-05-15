@@ -3,24 +3,71 @@ Nick Purcell
 
 Move the servo based on "movie" csv files in /Emiglio/movies
 """
-import servo
+from Emiglio.motor.servo import Servo
+from Emiglio.motor.motor import Motor
 import threading
-import servo
 from time import sleep, time
 import csv
 import numpy as np
 
-r_s = servo.Servo(0,start=0)
-r_e = servo.Servo(1,min=.4,max=.9,start=.5,invert=True)
-r_w = servo.Servo(2,start=.4)
-l_s = servo.Servo(3,start=0,invert=True)
-l_e = servo.Servo(4,min=.1,max=.53,start=.6)
-l_w = servo.Servo(5,start=.4)
+r_s = Servo(0,start=0)
+r_e = Servo(1,min=.4,max=.9,start=.5,invert=True)
+r_w = Servo(2,start=.4)
+l_s = Servo(3,start=0,invert=True)
+l_e = Servo(4,min=.1,max=.53,start=.6)
+l_w = Servo(5,start=.4)
+        
+r_f = Motor(13,14)
+r_b = Motor(26,12)
+l_f = Motor(5,15)
+l_b = Motor(6,13)
 
 servos = (r_s, r_e, r_w, l_s, l_e, l_w)
+motors = (r_f, r_b, l_f, l_b)
 
 
-def move(movie_name, move_freq=100):
+def move_motors(mots_name, move_freq=5):
+    """ 
+    Control motor speed based on csv
+    CSV organized with 1 instruction per row
+    (R Front) (R Back) (L Front) (L Back) (Transition time)
+    
+    Arguements
+    mots_name : String
+    Name of control csv
+    move_freq : int
+    Frequency in Hz of moves by servo - default(100)
+    """
+    # Get current servo position
+    current = [r_f.speed, l_f.speed, r_b.speed, l_b.speed,]
+    instructs = ()
+    # Read csv data
+    with open(mots_name + '.csv', newline='') as f:
+        reader = csv.reader(f)
+        data = np.array(list(reader)).astype(float)
+    # Cache all instructions for each move before begining movie
+    for row in data:
+        final = row[0:4]
+        t_time = row[4]
+        num_moves = int(t_time * move_freq)
+        delta = np.subtract(final, current) / num_moves
+        for i in range(num_moves):
+            instructs = instructs + (np.add(current, delta), )
+            current += delta 
+    # Iterate through each instruction
+    for instruct in instructs:
+        # Save begining of move for timing
+        t_start = time()
+        # move each servo to newest position
+        speed = instruct
+        for i, s in enumerate(motors):
+            s.set_speed(speed[i])
+        # Sleep until begining of next move cycle
+        stime = max(0, 1/move_freq-time() + t_start)
+        sleep(stime)
+
+
+def move_servos(movie_name, move_freq=30):
     """ 
     Move servos based on csv
     CSV organized with 1 instruction per row
@@ -52,6 +99,8 @@ def move(movie_name, move_freq=100):
             instructs = instructs + (np.add(current, delta), )
             current += delta 
     # Iterate through each instruction
+    t = 0
+    e = 0
     for instruct in instructs:
         # Save begining of move for timing
         t_start = time()
@@ -60,6 +109,9 @@ def move(movie_name, move_freq=100):
         for i, s in enumerate(servos):
             s.set_pulse(positions[i])
         # Sleep until begining of next move cycle
-        stime = max(0, 1/move_freq-time() + t_start)
+        etime = time() - t_start
+        stime = max(0, 1/move_freq-etime)
+        t += stime
+        e += etime
         sleep(stime)
-
+    print('t = ' + str(t) + ' else = ' + str(e) + ' sum = ' + str(e + t))
