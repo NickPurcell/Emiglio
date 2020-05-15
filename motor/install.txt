@@ -1,3 +1,7 @@
-pip3 install Adafruit-PCA9685
+sudo pip3 install Adafruit-PCA9685
 
-pip3 install evdev
+sudo pip3 install evdev
+
+
+    sudo pip3 install adafruit-circuitpython-pca9685
+    sudo pip3 install adafruit-circuitpython-servokit

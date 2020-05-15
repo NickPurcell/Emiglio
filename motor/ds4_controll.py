@@ -10,10 +10,10 @@ import math
 from evdev import InputDevice, categorize, ecodes
 from time import sleep
 
-moto_fr = Motor(5,12)
-moto_fl = Motor(26,15)
-moto_br = Motor(6,13)
-moto_bl = Motor(13,14)
+moto_fr = Motor(13,14, True)
+moto_fl = Motor(5,15, True)
+moto_br = Motor(26,12)
+moto_bl = Motor(6,13)
 
 # Speed information
 speed_right = 0
@@ -31,8 +31,8 @@ sleep(2)
 def set_speed(spd_r, spd_l):
     moto_br.set_speed(spd_r)
     moto_bl.set_speed(spd_l)
-    moto_fr.set_speed(-spd_r)
-    moto_fl.set_speed(-spd_l)
+    moto_fr.set_speed(spd_r)
+    moto_fl.set_speed(spd_l)
 
 # Control speed of rover
 def speed_control():

@@ -1,11 +1,12 @@
 import RPi.GPIO as GPIO
-import Adafruit_PCA9685
+import board
+import busio
+import adafruit_pca9685
 from time import sleep, time
 
-pwm = Adafruit_PCA9685.PCA9685()
-
-pwm_freq = 50
-pwm.set_pwm_freq(50)
+i2c = busio.I2C(board.SCL, board.SDA)
+pca = adafruit_pca9685.PCA9685(i2c)
+pca.frequency = 50
 
 GPIO.setmode(GPIO.BCM)
 
@@ -14,25 +15,22 @@ GPIO.setwarnings(False)
 
 class Motor:
 
-    def __init__(self, dir_pin, pwm_channel):
+    def __init__(self, dir_pin, pwm_channel, flip=False):
         self.dir_pin = dir_pin
         self.pwm_channel = pwm_channel
         # Set initial direction and speed (fwd, 0)
         GPIO.setup(dir_pin, GPIO.OUT, initial=GPIO.HIGH)
-        pwm.set_pwm(pwm_channel, 0, 4096)
+        pca.channels[self.pwm_channel].duty_cycle = 0
         self.dir = 1
         self.speed = 0
+        self.flip = flip
         
     def set_speed(self, speed):
         if -1 <= speed <= 1:
             self.speed = speed
-            self.dir = speed >= 0
+            self.dir = (speed >= 0) #^ self.flip
             GPIO.output(self.dir_pin, self.dir)
-            if speed == 0:
-                s = abs(speed)*.5+.5
-            else:
-                s = ((abs(speed)-1e-15)*.5+.5)
-            pwm.set_pwm(self.pwm_channel, int(4096*(1-s)), int(4096*s))
+            pca.channels[self.pwm_channel].duty_cycle = int(abs(speed)*0xffff)
             sleep(.1)
         else:
            print("Speed {} Invalid, -1 <= Speed <= 1".format(speed))
@@ -47,7 +45,7 @@ class Motor:
         GPIO.setup(dir_pin, GPIO.OUT, initial=self.dir)
         
     def stop(self):
-        pwm.set_pwm(self.pwm_channel, int(4096/2), int(4096/2))
+        pca.channels[self.pwm_channel].duty_cycle = 0
         sleep(.1)
         
         

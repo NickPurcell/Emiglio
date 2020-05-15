@@ -1,4 +1,10 @@
-Back-Left  (6, 13) 
-Back-Right   (26,12)
+Back-Left  (6, 13,True) 
+Back-Right   (26,12,True)
 Front-Right (13, 14)
 Front-Left  (5,15)
+
+Servo (1220-9000)
+
+R shoulder(0, 0, 1, 0)
+R Elbow(1, .4, .95,.95)
+R Wrist(1, 0, 1, .4)
