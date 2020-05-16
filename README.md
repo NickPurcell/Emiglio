@@ -21,16 +21,18 @@ My robot buddy
     - info.txt
         - servo and motor initialization settings
     - motor.py
-        - Motor control class to control speed from PWMPCA9685 and direction from GPIO
+        - Motor control class to control speed from PWM PCA9685 and direction from GPIO
     - mover.py
         - Control motor and servo from csv files
     servo.py
         - Servo control for PWM from PCA9685
 - movies - Servo control files
     - "movie_name".csv
-        - (R Front) (R Back) (L Front) (L Back) (Transition time)
+        - (R Shoulder) (R Elbow) (R Wrist) (L Shoulder) (L Elbow) (L Wrist) (Move Time)
 - Power System - General info about power system of robot
-- speed - TODO
+- speed - Motor Control Files
+    - 'name'.csv
+        - (R Front) (R Back) (L Front) (L Back) (Transition time)
 
 __init.py__ - Python package file
 __main__.py - Main python module
