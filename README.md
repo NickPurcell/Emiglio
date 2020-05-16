@@ -35,6 +35,8 @@ My robot buddy
         - (R Front) (R Back) (L Front) (L Back) (Transition time)
 
 __init.py__ - Python package file
+
 __main__.py - Main python module
+
 (led/motor/servo)_sequence.csv - The sequence of the control files to cycle through
                                  Overall Control Files
