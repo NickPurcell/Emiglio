@@ -3,22 +3,15 @@
 # Create animations on WS2812 16x16 LED screen
 import time
 from neopixel import *
-import argparse
 from PIL import Image
-import os
 import numpy as np
 import csv
 from math import pi, cos
 import threading
-from random import seed
-from random import random
-from pygame import mixer
+from random import seed, random
 
 # Use start time as random seed
 seed(time.time())
-
-# Initialize pygame mixer
-#mixer.init()
  
 # LED strip configuration:
 LED_COUNT      = 256      # Number of LED pixels.
@@ -37,7 +30,8 @@ spark_add = np.random.permutation(np.arange(pi/14, pi/24, (pi/24-pi/14)/256))
 pix_for = np.zeros([256,3])
 pix_bak = np.zeros([256,3])
 
- # Define functions which animate LEDs in various ways.
+
+#Very Slow don't use
 def colorWipe(strip, color, wait_ms=50):
     """ 
     Go through each LED one by one and change color
@@ -98,52 +92,6 @@ def animate(ani_name):
         im_data = im.getdata()
         data_cache = data_cache + (dat, )
         pix_for = np.array(im_data)
-        if dat[0][0] == 'r':
-            t_hold = random()*float(dat[0][1:])
-        else:
-            t_hold = float(dat[0])
-        time.sleep(max(t_hold - (time.time() - t_last), 0))
-        t_last = time.time()
-        
-
-def playlist(play_name):
-    """ 
-    Go through each sound in playlist folder and play
-    
-    Arguements
-    play_name : String
-    Name of playlist folder
-    """
-    global pix_for
-    t_last = time.time()
-    timing = []
-    with open(play_name + '/info.csv', newline='') as f:
-        reader = csv.reader(f)
-        data = list(reader)
-    data_cache = ()
-    for dat in data:
-        if dat == ['0','0']:
-            data_cache = ()
-            continue
-        elif dat[0] == '0':
-            if dat[1][0] == 'r':
-                reps = int(random()*float(dat[1][1:]))
-            else:
-                reps = int(dat[1])-1
-            for i in range(reps):
-                for p in data_cache:
-                    sound = mixer.Sound(play_name + '/' + p[1] + '.wav')
-                    sound.play()
-                    if p[0][0] == 'r':
-                        t_hold = random()*float(p[0][1:])
-                    else:
-                        t_hold = float(p[0])
-                    time.sleep(max(t_hold - (time.time() - t_last), 0))
-                    t_last = time.time()
-            data_cache = ()
-            continue
-        sound = mixer.Sound(play_name + '/' + dat[1] + '.wav')
-        sound.play()
         if dat[0][0] == 'r':
             t_hold = random()*float(dat[0][1:])
         else:
@@ -321,7 +269,6 @@ def stop():
     global stop_lock, timer_lock
     stop_lock.clear()
     timer_lock.clear()
-    colorWipe(strip, Color(0,0,0), 0)
     for i in range(strip.numPixels()):
         strip.setPixelColor(i, Color(0,0,0))
     strip.show()
@@ -340,11 +287,6 @@ def sparkle_control():
         time.sleep(max(1/16 - (time.time() - s_time), 0))
     
 # Start Neopixel
-# Process arguments
-parser = argparse.ArgumentParser()
-parser.add_argument('-c', '--clear', action='store_true', help='clear the display on exit')
-args = parser.parse_args()
-
 # Create NeoPixel object with appropriate configuration.
 strip = Adafruit_NeoPixel(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL)
 # Intialize the library (must be called once before other functions).

@@ -4,8 +4,8 @@ Nick Purcell
 Control the servos, motors, and LED face
 """
 from Emiglio.motor.mover import move_servos as move_servos, move_motors
-from Emiglio.led.animate import animate
-import Emiglio.led.animate
+from Emiglio.led.led_control import Screen
+from Emiglio.motor.mover import Servo_Controller
 from time import time, sleep
 import threading
 import csv
@@ -19,47 +19,38 @@ def motor_control():
 
 
 def servo_control():
-    with open('/home/pi/Emiglio/servo_sequence.csv') as f:
-        reader = csv.reader(f)
-        for row in reader:
-            s_time = time()
-            move_servos('/home/pi/Emiglio/movies/{}'.format(row[0]))
-            print(time()-s_time)
-    move_servos('/home/pi/Emiglio/movies/reset')
+    s_control = Servo_Controller()
+    s_control.start()
 
 
 def led_control():
-    with open('/home/pi/Emiglio/led_sequence.csv') as f:
-        reader = csv.reader(f)
-        for row in reader:
-            animate('/home/pi/Emiglio/animations/{}'.format(row[0]))
-        Emiglio.led.animate.stop()
+    face = Screen()
+    face.start()
 
 
 def main():
-    sleep(5)
-    motor_thread = threading.Thread(target=motor_control)
-    servo_thread = threading.Thread(target=servo_control)
+#    sleep(5)
+#    motor_thread = threading.Thread(target=motor_control)
+#    servo_thread = threading.Thread(target=servo_control)
 
-    servo_thread.setDaemon(True)
-    motor_thread.setDaemon(True)
+#    servo_thread.setDaemon(True)
+#    motor_thread.setDaemon(True)
     try:
 
-        servo_thread.start()
-        motor_thread.start()
+        servo_control()
 
         led_control()
+        while True:
+            sleep(10)
 
     except KeyboardInterrupt:
         move_motors('/home/pi/Emiglio/speed/stop')
         move_servos('/home/pi/Emiglio/movies/reset')
-        Emiglio.led.animate.stop()
         
 
     finally:
         move_motors('/home/pi/Emiglio/speed/stop')
         move_servos('/home/pi/Emiglio/movies/reset')
-        Emiglio.led.animate.stop()
 
 
 if __name__ == '__main__':
