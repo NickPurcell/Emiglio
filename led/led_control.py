@@ -40,7 +40,7 @@ class Screen(Thread):
         self.mask = mask
         self.invert = invert
         
-        self.image_list = (['cool','cool_a', .1], )
+        self.image_list = ()
         with open('/home/pi/Emiglio/led_sequence.csv', newline='') as f:
             reader = csv.reader(f)
             for ani in reader:
@@ -66,11 +66,6 @@ class Screen(Thread):
         next_im = 0
         next_effect = 0
         next_spark = 0
-        # Image processing initialization
-        im = Image.open('/home/pi/Emiglio/animations/' + self.image_list[self.index][0] + '/' + self.image_list[self.index][1] + '.png').convert("RGB")
-        image = np.array(im.getdata())
-        self.index += 1
-        next_im = time() + float(self.image_list[self.index][2])
         
         # Draw thread
         draw_thread = LED_Draw(self.strip)
@@ -115,6 +110,12 @@ class Screen(Thread):
         new_screen = np.zeros((256,3))
         effect = np.zeros((256,3))
         sparkle = np.zeros((256,3))
+        
+        # Image processing initialization
+        im = Image.open('/home/pi/Emiglio/animations/' + self.image_list[self.index][0] + '/' + self.image_list[self.index][1] + '.png').convert("RGB")
+        image = np.array(im.getdata())
+        next_im = time() + float(self.image_list[self.index][2])
+        self.index += 1
         
         # Loop
         while self.run_flag.wait():
