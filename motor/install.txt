@@ -1,7 +1,12 @@
 sudo pip3 install Adafruit-PCA9685
+sudo pip3 install RPI.GPIO
+sudo pip3 install adafruit-blinka
 
 sudo pip3 install evdev
 
+sudo raspi-config
+-interfacing options
+--I2C
 
-    sudo pip3 install adafruit-circuitpython-pca9685
-    sudo pip3 install adafruit-circuitpython-servokit
+sudo pip3 install adafruit-circuitpython-pca9685
+sudo pip3 install adafruit-circuitpython-servokit

@@ -45,14 +45,16 @@ class Servo_Controller(Thread):
                 sequ = sequ + ((row[0]), )
             sequence = sequ + (('reset'), )
             # Iterate through each animation
+            ind = 0
+            move_indexes = ()
             for row in sequence:
                 with open('/home/pi/Emiglio/movies/{}.csv'.format(row), newline='') as g:
                     movie_list = np.array(list(csv.reader(g))).astype(float)
                     for row in movie_list:
                         final = row[0:6]
                         t_time = row[6]
-                        num_moves = int(t_time * self.move_freq)
                         delta = np.subtract(final, current) / num_moves
+                        move_indexes = move_indexes + (ind, )
                         for i in range(num_moves):
                             self.instructs = self.instructs + (np.add(current, delta), )
                             current += delta
